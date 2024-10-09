@@ -1,7 +1,7 @@
 import {atom, useAtom} from 'jotai';
 import { produce } from 'immer';
 
-import ITodo from '../interfaces/ITodo';
+import ITodo, { ISubTask } from '../interfaces/ITodo';
 
 const todosAtom = atom<ITodo[]>([]);
 
@@ -31,15 +31,22 @@ export default function useTodos() {
    */
 
   // with immer
-  const addTodo = (todo: ITodo) => {
+  const addTodo = (todo: Omit<ITodo, "id" | "isFinished" | "subTasks">) => {
     const newTodos = produce(todos, (draft) => {
-      draft.push(todo);
+      const id = Number(new Date()).toString();
+      draft.push({
+        ...todo,
+        id,
+        isFinished: false,
+        subTasks: []
+      });
     });
     setTodos(newTodos);
   }
 
-  const updateTodo = (name: string, data: Record<string, any>) => {
-    const foundIndex = todos.findIndex((t) => t.name === name);
+  const updateTodo = (id: string, data: Omit<ITodo, "id" | "isFinished" | "subTasks">) => {
+    const foundIndex = todos.findIndex((t) => t.id === id);
+    if (foundIndex < 0) return;
     const newTodos = produce(todos, (draft) => {
       draft[foundIndex] = {
         ...draft[foundIndex],
@@ -49,13 +56,83 @@ export default function useTodos() {
     setTodos(newTodos);
   };
 
-  const finishTodo = (name: string) => {
-    const foundIndex = todos.findIndex((t) => t.name === name);
+  const finishTodo = (id: string) => {
+    const foundIndex = todos.findIndex((t) => t.id === id);
+    if (foundIndex < 0) return;
     const newTodos = produce(todos, (draft) => {
       draft[foundIndex].isFinished = true;
     });
     setTodos(newTodos);
   }
+  
+  const deleteTodo = (id: string) => {
+    const foundIndex = todos.findIndex((t) => t.id === id);
+    if (foundIndex < 0) return;
+    const newTodos = produce(todos, (draft) => {
+      draft.splice(foundIndex, 1);
+    });
+    setTodos(newTodos);
+  }
+  
+  const addSubTask = (todoId: string, subTask: Omit<ISubTask, "id" | "isFinished">) => {
+    const todoIndex = todos.findIndex((todo) => todo.id === todoId);
+    if (todoIndex < 0) return;
+    const newTodos = produce(todos, (draft) => {
+      const id = Number(new Date()).toString();
+      draft[todoIndex].subTasks.push({
+        ...subTask,
+        id,
+        isFinished: false,
+      });
+    });
+    setTodos(newTodos);
+  }
 
-  return { todos, addTodo, updateTodo, finishTodo };
+  const updateSubTask = (todoId: string, subTaskId: string, subTask: Omit<ISubTask, "id" | "isFinished">) => {
+    const todoIndex = todos.findIndex((todo) => todo.id === todoId);
+    if (todoIndex < 0) return;
+    const subTaskIndex = todos[todoIndex].subTasks.findIndex((st) => st.id === subTaskId);
+    if (subTaskIndex < 0) return;
+    const newTodos = produce(todos, (draft) => {
+      draft[todoIndex].subTasks[subTaskIndex] = {
+        ...draft[todoIndex].subTasks[subTaskIndex],
+        ...subTask,
+      }
+    });
+    setTodos(newTodos);
+  }
+  
+  const finishSubTask = (todoId: string, subTaskId: string) => {
+    const todoIndex = todos.findIndex((todo) => todo.id === todoId);
+    if (todoIndex < 0) return;
+    const subTaskIndex = todos[todoIndex].subTasks.findIndex((st) => st.id === subTaskId);
+    if (subTaskIndex < 0) return;
+    const newTodos = produce(todos, (draft) => {
+      draft[todoIndex].subTasks[subTaskIndex].isFinished = true;
+    });
+    setTodos(newTodos);
+  }
+
+  const deleteSubTask = (todoId: string, subTaskId: string) => {
+    const todoIndex = todos.findIndex((todo) => todo.id === todoId);
+    if (todoIndex < 0) return;
+    const subTaskIndex = todos[todoIndex].subTasks.findIndex((st) => st.id === subTaskId);
+    if (subTaskIndex < 0) return;
+    const newTodos = produce(todos, (draft) => {
+      draft[todoIndex].subTasks.splice(subTaskIndex, 1);
+    });
+    setTodos(newTodos);
+  }
+
+  return {
+    todos,
+    addTodo,
+    updateTodo,
+    finishTodo,
+    deleteTodo,
+    addSubTask,
+    updateSubTask,
+    finishSubTask,
+    deleteSubTask
+  };
 }
